@@ -1,0 +1,152 @@
+const Discord = require('discord.js');
+
+const { LIMITS, truncate, sanitizeText, sanitizeCode, formatUtc } = require('./embedText');
+const crashOnError = require('../utils/crashOnError');
+const getErrorMessage = require('../utils/getErrorMessage');
+
+const ALERT_COLOR = '#ff0000';
+const RETRY_DELAY_MS = 5000;
+const MAX_ATTEMPTS = 5;
+
+function isNonRetryableError(error) {
+	const status = error?.httpStatus;
+	return Number.isInteger(status) && status >= 400 && status < 500 && status !== 429;
+}
+
+class AlertDiscord {
+	static #instance = null;
+
+	#createClient;
+	#token;
+	#channels;
+	#muted;
+	#sleep;
+	#onFatal;
+	#loginPromise = null;
+	#queue = Promise.resolve();
+
+	constructor({ createClient, token, channels, muted, sleep, onFatal } = {}) {
+		this.#createClient = createClient || (() => new Discord.Client());
+		this.#token = token;
+		this.#channels = channels || [];
+		this.#muted = !!muted;
+		this.#sleep = sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
+		this.#onFatal = onFatal || crashOnError;
+	}
+
+	// conf is required lazily so that a configured instance (tests) needs no ocore config
+	static getInstance() {
+		if (AlertDiscord.#instance) return AlertDiscord.#instance;
+
+		const conf = require('ocore/conf.js');
+		const muted = !!process.env.mute;
+		if (!muted) { // a muted (dry-run) instance never logs in, so it needs no credentials
+			if (!conf.discord_token) throw Error('discord_token missing in conf');
+			if (!conf.discord_channels?.length) throw Error('channels missing in conf');
+		}
+		AlertDiscord.#instance = new AlertDiscord({
+			token: conf.discord_token,
+			channels: conf.discord_channels,
+			muted,
+		});
+		return AlertDiscord.#instance;
+	}
+
+	ensureLoggedIn() {
+		if (!this.#loginPromise) {
+			this.#loginPromise = (async () => {
+				const client = this.#createClient();
+				client.on('error', (error) => {
+					console.error(`Discord alert client error: ${getErrorMessage(error)}`);
+				});
+				await client.login(this.#token);
+				console.error('Discord alert client logged in');
+				return client;
+			})().catch((error) => {
+				this.#loginPromise = null;
+				throw error;
+			});
+		}
+		return this.#loginPromise;
+	}
+
+	static buildEmbed(alert) {
+		const {
+			aaName, url, name, leaderValue, currentValue, safeValue,
+			leaderSupport, expiryTs, canCommit, now,
+		} = alert;
+
+		// the fields carry every fact, so the description is only the link
+		const description = `[View on interface](${url})`;
+		const challengingPeriodEnds = canCommit
+			? `${formatUtc(expiryTs)} (expired, can be committed now)`
+			: formatUtc(expiryTs);
+
+		const embed = new Discord.MessageEmbed()
+			.setColor(ALERT_COLOR)
+			.setTitle(truncate('⚠️ Alert: unsafe leader value in ' + sanitizeText(aaName), LIMITS.title))
+			.setDescription(truncate(description, LIMITS.description))
+			.addFields(
+				{ name: 'Parameter', value: sanitizeCode(name), inline: true },
+				{ name: 'Leader value', value: sanitizeCode(leaderValue), inline: true },
+				{ name: 'Safe value', value: sanitizeText(safeValue), inline: true },
+				{ name: 'Leader support', value: sanitizeText(leaderSupport), inline: true },
+				{ name: 'Current value', value: sanitizeCode(currentValue), inline: true },
+				{ name: 'Challenging period ends', value: challengingPeriodEnds, inline: true },
+			)
+			.setFooter(truncate(`Checked at ${formatUtc(now)}`, LIMITS.footer));
+
+		const overflow = embed.length - LIMITS.total;
+		if (overflow > 0) {
+			embed.setDescription(truncate(embed.description, Math.max(0, embed.description.length - overflow)));
+		}
+		return embed;
+	}
+
+	announceUnsafeLeader(alert) {
+		const embed = AlertDiscord.buildEmbed(alert);
+		const result = this.#queue.then(() => this.#send(embed));
+		this.#queue = result.catch(() => {});
+		return result;
+	}
+
+	async #send(embed) {
+		if (this.#muted) {
+			console.error('Discord alert muted:', JSON.stringify(embed.toJSON()));
+			return { sent: [], failed: [] };
+		}
+		const sent = [];
+		const failed = [];
+		for (const channelId of this.#channels) {
+			const ok = await this.#sendToChannel(channelId, embed);
+			(ok ? sent : failed).push(channelId);
+		}
+		return { sent, failed };
+	}
+
+	async #sendToChannel(channelId, embed) {
+		let lastError = null;
+		for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+			try {
+				const client = await this.ensureLoggedIn();
+				const channel = await client.channels.fetch(channelId);
+				await channel.send(embed);
+				console.error(`Discord alert sent to channel ${channelId}`);
+				return true;
+			} catch (error) {
+				lastError = error;
+				if (isNonRetryableError(error)) {
+					console.error(`Discord alert rejected for channel ${channelId} (HTTP ${error.httpStatus}): ${getErrorMessage(error)}`);
+					return false;
+				}
+				console.error(`Discord alert attempt ${attempt}/${MAX_ATTEMPTS} failed for channel ${channelId}: ${getErrorMessage(error)}`);
+				if (attempt < MAX_ATTEMPTS)
+					await this.#sleep(RETRY_DELAY_MS);
+			}
+		}
+		this.#onFatal(`Discord alert failed after ${MAX_ATTEMPTS} attempts for channel ${channelId}`, lastError);
+		return false;
+	}
+}
+
+module.exports = AlertDiscord;

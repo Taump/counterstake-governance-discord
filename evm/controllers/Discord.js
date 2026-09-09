@@ -1,6 +1,6 @@
-const governanceDiscord = require("governance_events/governance_discord");
 const { ethers } = require('ethers');
 const conf = require('../../conf');
+const governanceDiscord = require("governance_events/governance_discord");
 
 const {
 	getLinkToExplorerByTX
@@ -17,15 +17,22 @@ function normalizeTriggerAddress(event) {
 }
 
 class Discord {
+	static getAaName(meta) {
+		return meta.main_aa + ' - ' + meta.bridgeAsset.symbol + ' on ' + meta.network + ' (' + (meta.isImport ? 'import' : 'export') + ')';
+	}
+
+	static getInterfaceUrl(meta) {
+		return conf.counterstake_base_url + meta.main_aa;
+	}
+
 	static announceEvent(meta, event) {
 		normalizeTriggerAddress(event);
 
-		const aa_name = meta.main_aa + ' - ' + meta.bridgeAsset.symbol + ' on ' + meta.network + ' (' + (meta.isImport ? 'import' : 'export') + ')';
 		return governanceDiscord.announceEvent(
-			aa_name,
+			Discord.getAaName(meta),
 			meta.votingAsset.symbol,
 			meta.votingAsset.decimals,
-			conf.counterstake_base_url + meta.main_aa,
+			Discord.getInterfaceUrl(meta),
 			event,
 			getLinkToExplorerByTX(meta.network, event.trigger_unit)
 		);

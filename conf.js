@@ -36,4 +36,16 @@ exports.ws_nodes = {
 exports.scan_start_date = process.env.scan_start_date;
 exports.address_scan_interval_hours = process.env.address_scan_interval_hours || 12;
 
+exports.alert_check_interval_hours = process.env.alert_check_interval_hours || 6;
+
+exports.trusted_oracles = process.env.testnet ? {
+	// testnet oracles are not configured: the oracle policy is skipped there
+} : {
+	Ethereum: '0xAC4AA997A171A6CbbF5540D08537D5Cb1605E191',
+	BSC: '0xdD52899A001a4260CDc43307413A5014642f37A2',
+	Polygon: '0xdd603Fc2312A0E7Ab01dE2dA83e7776Af406DCeB',
+	Kava: '0x16f5E8ad38cf676a0a78436ED8F5C8c19dA3be3d',
+	Obyte: 'JPQKPRI5FMTQRJF4ZZMYZYDQVRD55OTC',
+};
+
 console.log('finished server conf');

@@ -1,9 +1,11 @@
 const { ethers } = require('ethers');
+const conf = require('ocore/conf');
 
 const Provider = require('./controllers/Provider');
 const Bridges = require('./controllers/Bridges');
 const ContractManager = require('./controllers/ContractManager');
 const AddressEventScanner = require('./controllers/AddressEventScanner');
+const LeaderAlertMonitor = require('./controllers/LeaderAlertMonitor');
 
 const { eventsForV1 } = require('./eventsForV1');
 const crashOnError = require('../utils/crashOnError');
@@ -31,19 +33,22 @@ function generateMetaForEventsInV1() {
 	}
 }
 
-function initNetwork(network, contractManager, addressEventScanner, bridges) {
+function initNetwork(network, { contractManager, addressEventScanner, leaderAlertMonitor, bridges }) {
 	const p = new Provider(network);
 	contractManager.onContractsReady(network, (contracts) => {
 		addressEventScanner.setContracts(network, contracts);
+		leaderAlertMonitor.setContracts(network, contracts);
 	});
 	p.connect(() => { // new provider (connect/reconnect)
 		(async () => {
 			addressEventScanner.setProvider(network, p.provider);
+			leaderAlertMonitor.setProvider(network, p.provider);
 			const contracts = bridges.getContractsByNetwork(network);
 			const initialized = await contractManager.initNetworkContracts(contracts, network, p.provider);
 			if (!initialized) return;
 			contractManager.initHandlersByNetwork(network, p);
 			await addressEventScanner.scanNetworkOnce(network);
+			await leaderAlertMonitor.checkNetworkOnce(network);
 			console.log(`[${network}]: connected`);
 		})().catch(e => crashOnError(`[${network}]: connect handler failed`, e));
 	});
@@ -57,11 +62,11 @@ async function init() {
 	const contractManager = new ContractManager();
 	const addressEventScanner = new AddressEventScanner();
 	addressEventScanner.startInterval();
+	const leaderAlertMonitor = new LeaderAlertMonitor();
+	leaderAlertMonitor.startInterval();
 
-	initNetwork('Ethereum', contractManager, addressEventScanner, bridges);
-	initNetwork('BSC', contractManager, addressEventScanner, bridges);
-	initNetwork('Polygon', contractManager, addressEventScanner, bridges);
-	initNetwork('Kava', contractManager, addressEventScanner, bridges);
+	const services = { contractManager, addressEventScanner, leaderAlertMonitor, bridges };
+	Object.keys(conf.ws_nodes).forEach(network => initNetwork(network, services));
 }
 
 module.exports = {
