@@ -12,6 +12,12 @@ function getTiming({ startTs, period, now }) {
 	};
 }
 
+function formatUtc(timestamp) {
+	const ts = Number(timestamp);
+	if (!Number.isFinite(ts) || ts <= 0) return 'unknown';
+	return new Date(Math.floor(ts) * 1000).toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+}
+
 function formatDuration(seconds) {
 	const total = Math.max(0, Math.floor(Number(seconds) || 0));
 	const days = Math.floor(total / 86400);
@@ -25,5 +31,6 @@ function formatDuration(seconds) {
 
 module.exports = {
 	getTiming,
+	formatUtc,
 	formatDuration,
 };

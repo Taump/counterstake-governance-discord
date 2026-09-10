@@ -1,13 +1,72 @@
 const Discord = require('discord.js');
 const conf = require('ocore/conf.js');
 
-const { LIMITS, truncate, sanitizeText, sanitizeCode, formatUtc } = require('./embedText');
+const { formatUtc } = require('./timing');
 const crashOnError = require('../utils/crashOnError');
 const getErrorMessage = require('../utils/getErrorMessage');
+
+// Alert values come from voters, so everything rendered goes through the helpers below.
+const LIMITS = {
+	title: 256,
+	description: 4096,
+	footer: 2048,
+	total: 6000,
+	value: 200, // cap for attacker-controlled values (leader/current/safe value/names)
+};
 
 const ALERT_COLOR = '#ff0000';
 const RETRY_DELAY_MS = 5000;
 const MAX_ATTEMPTS = 5;
+
+function truncate(str, max) {
+	if (str.length <= max) return str;
+	return str.slice(0, Math.max(0, max - 1)) + '…';
+}
+
+function collapseWhitespace(value) {
+	return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function sanitizeText(value, max = LIMITS.value) {
+	return truncate(Discord.Util.escapeMarkdown(collapseWhitespace(value)), max);
+}
+
+// backticks and newlines cannot be escaped inside a code span, so they are removed
+function sanitizeCode(value, max = LIMITS.value) {
+	const str = collapseWhitespace(String(value ?? '').replace(/[`\r\n]/g, ' '));
+	return '`' + truncate(str || '-', max) + '`';
+}
+
+function buildEmbed(alert) {
+	const {
+		aaName, url, name, leaderValue, currentValue, safeValue,
+		leaderSupport, expiryTs, canCommit, now,
+	} = alert;
+
+	// the fields carry every fact, so the description is only the link
+	const challengingPeriodEnds = canCommit
+		? `${formatUtc(expiryTs)} (expired, can be committed now)`
+		: formatUtc(expiryTs);
+
+	const embed = new Discord.MessageEmbed()
+		.setColor(ALERT_COLOR)
+		.setTitle(truncate('⚠️ Alert: unsafe leader value in ' + sanitizeText(aaName), LIMITS.title))
+		.setDescription(truncate(`[View on interface](${url})`, LIMITS.description))
+		.addFields(
+			{ name: 'Parameter', value: sanitizeCode(name), inline: true },
+			{ name: 'Leader value', value: sanitizeCode(leaderValue), inline: true },
+			{ name: 'Safe value', value: sanitizeText(safeValue), inline: true },
+			{ name: 'Leader support', value: sanitizeText(leaderSupport), inline: true },
+			{ name: 'Current value', value: sanitizeCode(currentValue), inline: true },
+			{ name: 'Challenging period ends', value: challengingPeriodEnds, inline: true },
+		)
+		.setFooter(truncate(`Checked at ${formatUtc(now)}`, LIMITS.footer));
+
+	const overflow = embed.length - LIMITS.total;
+	if (overflow > 0)
+		embed.setDescription(truncate(embed.description, Math.max(0, embed.description.length - overflow)));
+	return embed;
+}
 
 function isNonRetryableError(error) {
 	const status = error?.httpStatus;
@@ -51,7 +110,7 @@ class AlertDiscord {
 		return AlertDiscord.#instance;
 	}
 
-	ensureLoggedIn() {
+	#ensureLoggedIn() {
 		if (!this.#loginPromise) {
 			this.#loginPromise = (async () => {
 				const client = this.#createClient();
@@ -69,41 +128,8 @@ class AlertDiscord {
 		return this.#loginPromise;
 	}
 
-	static buildEmbed(alert) {
-		const {
-			aaName, url, name, leaderValue, currentValue, safeValue,
-			leaderSupport, expiryTs, canCommit, now,
-		} = alert;
-
-		// the fields carry every fact, so the description is only the link
-		const description = `[View on interface](${url})`;
-		const challengingPeriodEnds = canCommit
-			? `${formatUtc(expiryTs)} (expired, can be committed now)`
-			: formatUtc(expiryTs);
-
-		const embed = new Discord.MessageEmbed()
-			.setColor(ALERT_COLOR)
-			.setTitle(truncate('⚠️ Alert: unsafe leader value in ' + sanitizeText(aaName), LIMITS.title))
-			.setDescription(truncate(description, LIMITS.description))
-			.addFields(
-				{ name: 'Parameter', value: sanitizeCode(name), inline: true },
-				{ name: 'Leader value', value: sanitizeCode(leaderValue), inline: true },
-				{ name: 'Safe value', value: sanitizeText(safeValue), inline: true },
-				{ name: 'Leader support', value: sanitizeText(leaderSupport), inline: true },
-				{ name: 'Current value', value: sanitizeCode(currentValue), inline: true },
-				{ name: 'Challenging period ends', value: challengingPeriodEnds, inline: true },
-			)
-			.setFooter(truncate(`Checked at ${formatUtc(now)}`, LIMITS.footer));
-
-		const overflow = embed.length - LIMITS.total;
-		if (overflow > 0) {
-			embed.setDescription(truncate(embed.description, Math.max(0, embed.description.length - overflow)));
-		}
-		return embed;
-	}
-
 	announceUnsafeLeader(alert) {
-		const embed = AlertDiscord.buildEmbed(alert);
+		const embed = buildEmbed(alert);
 		const result = this.#queue.then(() => this.#send(embed));
 		this.#queue = result.catch(() => {});
 		return result;
@@ -127,7 +153,7 @@ class AlertDiscord {
 		let lastError = null;
 		for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 			try {
-				const client = await this.ensureLoggedIn();
+				const client = await this.#ensureLoggedIn();
 				const channel = await client.channels.fetch(channelId);
 				await channel.send(embed);
 				console.error(`Discord alert sent to channel ${channelId}`);

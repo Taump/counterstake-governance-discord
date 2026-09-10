@@ -62,9 +62,9 @@ function checkPeriods(hours) {
 	return safe();
 }
 
-function checkTrustedOracle(oracle, trustedOracle, normalize = value => value) {
+function checkTrustedOracle(oracle, trustedOracle) {
 	if (!trustedOracle) return safe(); // no oracle configured for this network: policy is off
-	return normalize(String(oracle)) === normalize(trustedOracle)
+	return String(oracle).toLowerCase() === trustedOracle.toLowerCase()
 		? safe()
 		: unsafe(`oracle ${oracle} is not the trusted oracle`, trustedOracleValue(trustedOracle), true);
 }
@@ -82,7 +82,7 @@ function checkEvmLeader(name, rawValue, { trustedOracle } = {}) {
 				? checkPeriods(rawValue.map(toHours))
 				: unsafe('periods is not an array', SAFE_VALUES.periods);
 		case 'oracleAddress':
-			return checkTrustedOracle(rawValue, trustedOracle, value => value.toLowerCase());
+			return checkTrustedOracle(rawValue, trustedOracle);
 		default:
 			return safe();
 	}

@@ -2,8 +2,7 @@ const conf = require('ocore/conf.js');
 const mutex = require('ocore/mutex');
 
 const AlertDiscord = require('./AlertDiscord');
-const { formatUtc } = require('./embedText');
-const { formatDuration } = require('./timing');
+const { formatUtc, formatDuration } = require('./timing');
 const getErrorMessage = require('../utils/getErrorMessage');
 const crashOnError = require('../utils/crashOnError');
 
@@ -35,12 +34,6 @@ function newPassStats() {
 	};
 }
 
-function formatPassStats(stats, startedAt) {
-	return `checked=${stats.checked} notVoted=${stats.notVoted} beforeHalf=${stats.beforeHalf}`
-		+ ` committed=${stats.committed} unsafe=${stats.unsafe} unsafeBeforeHalf=${stats.unsafeBeforeHalf}`
-		+ ` alertsSent=${stats.alertsSent} errors=${stats.errors} durationMs=${Date.now() - startedAt}`;
-}
-
 // `context` is read at the end, so it can report state the pass discovered
 async function runPass({ chain, lockKey, skipIfLocked = false, context = () => '', run }) {
 	const unlock = skipIfLocked ? await mutex.lockOrSkip(lockKey) : await mutex.lock(lockKey);
@@ -58,7 +51,10 @@ async function runPass({ chain, lockKey, skipIfLocked = false, context = () => '
 		console.error(`leader alert pass [${chain}] failed:`, getErrorMessage(e));
 		return false;
 	} finally {
-		console.error(`leader alert pass [${chain}] ${context()} ${formatPassStats(stats, startedAt)}`);
+		console.error(`leader alert pass [${chain}] ${context()}`
+			+ ` checked=${stats.checked} notVoted=${stats.notVoted} beforeHalf=${stats.beforeHalf}`
+			+ ` committed=${stats.committed} unsafe=${stats.unsafe} unsafeBeforeHalf=${stats.unsafeBeforeHalf}`
+			+ ` alertsSent=${stats.alertsSent} errors=${stats.errors} durationMs=${Date.now() - startedAt}`);
 		unlock();
 	}
 }
@@ -89,8 +85,6 @@ async function reportUnsafeLeader({ chain, target, alertDiscord, stats, timing, 
 module.exports = {
 	schedulePasses,
 	resolveAlertDiscord,
-	newPassStats,
-	formatPassStats,
 	runPass,
 	logLeaderCheck,
 	reportUnsafeLeader,

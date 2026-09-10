@@ -6,8 +6,7 @@ const DataFetcher = require('./DataFetcher');
 const Formatter = require('./Formatter');
 const Discord = require('./Discord');
 const { checkEvmLeader } = require('../../alerts/limits');
-const { getTiming } = require('../../alerts/timing');
-const { formatUtc } = require('../../alerts/embedText');
+const { getTiming, formatUtc } = require('../../alerts/timing');
 const {
 	schedulePasses,
 	resolveAlertDiscord,
@@ -20,7 +19,6 @@ const sleep = require('../../utils/sleep');
 
 const LOCK_PREFIX = 'LeaderAlertMonitor';
 const CONTRACT_DELAY_SECONDS = 0.3;
-const SKIPPED_TYPES = ['governance']; // the governance contract itself holds no voted value
 
 // A pass pins all its reads to one block. If that block is no longer available on the node
 // (a pruning or load-balanced RPC), the pass refetches the head and retries the contract.
@@ -53,7 +51,7 @@ class LeaderAlertMonitor {
 	}
 
 	setContracts(network, contracts) {
-		this.#contracts[network] = (contracts || []).filter(contract => !SKIPPED_TYPES.includes(contract.type));
+		this.#contracts[network] = (contracts || []).filter(contract => contract.type !== 'governance'); // holds no voted value
 	}
 
 	startInterval() {

@@ -1,10 +1,9 @@
+const crypto = require('crypto');
 const DAG = require('aabot/dag.js');
 const conf = require('ocore/conf.js');
 
 const { checkObyteLeader } = require('./limits');
-const { getTiming } = require('./timing');
-const { formatUtc } = require('./embedText');
-const getObyteValueKey = require('./obyteValueKey');
+const { getTiming, formatUtc } = require('./timing');
 const {
 	schedulePasses,
 	resolveAlertDiscord,
@@ -18,6 +17,18 @@ const CHAIN = 'Obyte';
 const LOCK_KEY = 'LeaderAlertMonitor.Obyte';
 const START_TS_PREFIX = 'challenging_period_start_ts_';
 const MAX_LOGGED_VALUE_LENGTH = 200;
+
+
+// Mirrors $get_value_key of the governance AAs, which builds the `support_<name>_<key>` var
+// name: export governance uses the value itself, import governance hashes it once the name
+// would exceed 128 chars (the AA measures that with its longest parameter name, `oracles`).
+function getObyteValueKey(value, isImport) {
+	const str = String(value);
+	if (!isImport) return str;
+	return (('support_oracles_' + str + '_').length + 32) > 128
+		? crypto.createHash('sha256').update(str, 'utf8').digest('base64')
+		: str;
+}
 
 function formatSupport(support, decimals, symbol) {
 	const amount = Number(support) || 0;
