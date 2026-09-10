@@ -1,4 +1,5 @@
 const Discord = require('discord.js');
+const conf = require('ocore/conf.js');
 
 const { LIMITS, truncate, sanitizeText, sanitizeCode, formatUtc } = require('./embedText');
 const crashOnError = require('../utils/crashOnError');
@@ -34,11 +35,9 @@ class AlertDiscord {
 		this.#onFatal = onFatal || crashOnError;
 	}
 
-	// conf is required lazily so that a configured instance (tests) needs no ocore config
 	static getInstance() {
 		if (AlertDiscord.#instance) return AlertDiscord.#instance;
 
-		const conf = require('ocore/conf.js');
 		const muted = !!process.env.mute;
 		if (!muted) { // a muted (dry-run) instance never logs in, so it needs no credentials
 			if (!conf.discord_token) throw Error('discord_token missing in conf');

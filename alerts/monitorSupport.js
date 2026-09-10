@@ -1,27 +1,17 @@
+const conf = require('ocore/conf.js');
+const mutex = require('ocore/mutex');
+
 const AlertDiscord = require('./AlertDiscord');
 const { formatUtc } = require('./embedText');
 const { formatDuration } = require('./timing');
-const parsePositiveNumber = require('../utils/parsePositiveNumber');
 const getErrorMessage = require('../utils/getErrorMessage');
 const crashOnError = require('../utils/crashOnError');
 
 // Shared by both leader monitors. Alert output goes through console.error on purpose:
 // headless-obyte redirects console.log, warn and info to log.txt.
 
-const DEFAULT_INTERVAL_HOURS = 6;
-const MIN_INTERVAL_HOURS = 0.1;
-
-function getAlertIntervalHours() {
-	const conf = require('ocore/conf.js'); // required lazily to keep this module unit-testable
-	return parsePositiveNumber(conf.alert_check_interval_hours, {
-		name: 'alert_check_interval_hours',
-		defaultValue: DEFAULT_INTERVAL_HOURS,
-		min: MIN_INTERVAL_HOURS,
-	});
-}
-
 function schedulePasses({ chain, run, runNow = false }) {
-	const intervalHours = getAlertIntervalHours();
+	const intervalHours = conf.alert_check_interval_hours;
 	const start = label => run().catch(e => crashOnError(`leader alert ${label} failed`, e));
 	if (runNow) start(`initial ${chain} pass`);
 	setInterval(() => start(`${chain} interval`), intervalHours * 60 * 60 * 1000);
@@ -53,8 +43,6 @@ function formatPassStats(stats, startedAt) {
 
 // `context` is read at the end, so it can report state the pass discovered
 async function runPass({ chain, lockKey, skipIfLocked = false, context = () => '', run }) {
-	// required lazily: ocore/mutex starts a timer on import that would keep test processes alive
-	const mutex = require('ocore/mutex');
 	const unlock = skipIfLocked ? await mutex.lockOrSkip(lockKey) : await mutex.lock(lockKey);
 	if (!unlock) {
 		console.error(`leader alert pass [${chain}] skipped, already running`);
