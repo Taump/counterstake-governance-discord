@@ -1,21 +1,14 @@
-// Challenging-period timing, computed separately per platform because the commit
-// boundary differs:
-//  - EVM VotedValue.checkChallengingPeriodExpiry(): block.timestamp > start + period (strict)
-//  - Obyte governance AA: bounces only while start + period > timestamp, i.e. commit is
-//    allowed when timestamp >= start + period (inclusive)
-
-function getTiming({ startTs, period, now }, commitIsStrict) {
+// Values are in seconds. `canCommit` follows the AA, which allows a commit at the expiry
+// second; the contract wants one second more, and that second only affects wording.
+function getTiming({ startTs, period, now }) {
 	const start = Number(startTs);
-	const challengingPeriod = Number(period);
+	const expiryTs = start + Number(period);
 	const ts = Number(now);
-	const halfTs = start + challengingPeriod / 2;
-	const expiryTs = start + challengingPeriod;
 	return {
-		halfTs,
 		expiryTs,
 		remainingSeconds: Math.max(0, expiryTs - ts),
-		halfPassed: ts >= halfTs,
-		canCommit: commitIsStrict ? ts > expiryTs : ts >= expiryTs,
+		halfPassed: ts >= start + Number(period) / 2,
+		canCommit: ts >= expiryTs,
 	};
 }
 
@@ -30,16 +23,7 @@ function formatDuration(seconds) {
 	return `${total}s`;
 }
 
-function getEvmTiming({ startTs, period, blockTs }) {
-	return getTiming({ startTs, period, now: blockTs }, true);
-}
-
-function getObyteTiming({ startTs, period, now }) {
-	return getTiming({ startTs, period, now }, false);
-}
-
 module.exports = {
-	getEvmTiming,
-	getObyteTiming,
+	getTiming,
 	formatDuration,
 };

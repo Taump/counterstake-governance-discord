@@ -6,7 +6,7 @@ const DataFetcher = require('./DataFetcher');
 const Formatter = require('./Formatter');
 const Discord = require('./Discord');
 const { checkEvmLeader } = require('../../alerts/limits');
-const { getEvmTiming } = require('../../alerts/timing');
+const { getTiming } = require('../../alerts/timing');
 const { formatUtc } = require('../../alerts/embedText');
 const {
 	schedulePasses,
@@ -145,7 +145,7 @@ class LeaderAlertMonitor {
 			return;
 		}
 
-		const timing = getEvmTiming({ startTs, period: meta.challenging_period, blockTs });
+		const timing = getTiming({ startTs, period: meta.challenging_period, now: blockTs });
 
 		// challenging_period_start_ts() just succeeded on this contract at this block, so a
 		// bare revert on leader(0)/current_value(0) means an empty array

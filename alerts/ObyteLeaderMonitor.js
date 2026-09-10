@@ -2,7 +2,7 @@ const DAG = require('aabot/dag.js');
 const conf = require('ocore/conf.js');
 
 const { checkObyteLeader } = require('./limits');
-const { getObyteTiming } = require('./timing');
+const { getTiming } = require('./timing');
 const { formatUtc } = require('./embedText');
 const getObyteValueKey = require('./obyteValueKey');
 const {
@@ -108,7 +108,7 @@ class ObyteLeaderMonitor {
 	}
 
 	async #checkLeader({ address, governance, name, startTs, now, stats }) {
-		const timing = getObyteTiming({ startTs, period: governance.challenging_period, now });
+		const timing = getTiming({ startTs, period: governance.challenging_period, now });
 		const leader = await DAG.readAAStateVar(address, 'leader_' + name);
 		if (!exists(leader)) {
 			stats.notVoted++;
