@@ -79,28 +79,22 @@ class AlertDiscord {
 
 	#token;
 	#channels;
-	#muted;
 	#loginPromise = null;
 	#queue = Promise.resolve();
 
-	constructor({ token, channels, muted }) {
+	constructor({ token, channels }) {
 		this.#token = token;
-		this.#channels = channels || [];
-		this.#muted = !!muted;
+		this.#channels = channels;
 	}
 
 	static getInstance() {
 		if (AlertDiscord.#instance) return AlertDiscord.#instance;
 
-		const muted = !!process.env.mute;
-		if (!muted) {
-			if (!conf.discord_token) throw Error('discord_token missing in conf');
-			if (!conf.discord_channels?.length) throw Error('channels missing in conf');
-		}
+		if (!conf.discord_token) throw Error('discord_token missing in conf');
+		if (!conf.discord_channels?.length) throw Error('channels missing in conf');
 		AlertDiscord.#instance = new AlertDiscord({
 			token: conf.discord_token,
 			channels: conf.discord_channels,
-			muted,
 		});
 		return AlertDiscord.#instance;
 	}
@@ -131,8 +125,6 @@ class AlertDiscord {
 	}
 
 	async #send(embed) {
-		if (this.#muted)
-			return console.error('Discord alert muted:', JSON.stringify(embed.toJSON()));
 		for (const channelId of this.#channels)
 			await this.#sendToChannel(channelId, embed);
 	}

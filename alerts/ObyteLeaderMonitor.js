@@ -10,7 +10,6 @@ const {
 	logLeaderCheck,
 	reportUnsafeLeader,
 } = require('./monitorSupport');
-const getErrorMessage = require('../utils/getErrorMessage');
 
 const CHAIN = 'Obyte';
 const LOCK_KEY = 'LeaderAlertMonitor.Obyte';
@@ -61,20 +60,6 @@ class ObyteLeaderMonitor {
 		schedulePasses({ chain: CHAIN, run: () => this.checkAll(), runNow: true });
 	}
 
-	// Timestamps come from the DAG rather than the local clock, to match what the AA sees.
-	async #getNow() {
-		try {
-			const props = await DAG.getLastStableUnitProps();
-			const timestamp = Number(props?.timestamp);
-			if (Number.isFinite(timestamp) && timestamp > 0)
-				return timestamp;
-			console.error(`leader alert [${CHAIN}]: no timestamp in last stable unit props, using local clock`, props);
-		} catch (e) {
-			console.error(`leader alert [${CHAIN}]: failed to read last stable unit props, using local clock`, getErrorMessage(e));
-		}
-		return Math.floor(Date.now() / 1000);
-	}
-
 	checkAll() {
 		let now = null;
 		let aas = 0;
@@ -84,7 +69,7 @@ class ObyteLeaderMonitor {
 			skipIfLocked: true,
 			context: () => `now=${now ?? '-'} aas=${aas}`,
 			run: async (stats) => {
-				now = await this.#getNow();
+				now = Math.floor(Date.now() / 1000);
 				const governanceAAs = this.#getGovernanceAAs() || {};
 				console.error(`leader alert pass [${CHAIN}] start at ${formatUtc(now)}, ${Object.keys(governanceAAs).length} governance AAs`);
 				for (const [address, governance] of Object.entries(governanceAAs)) {
