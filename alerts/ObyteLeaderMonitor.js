@@ -84,7 +84,6 @@ class ObyteLeaderMonitor {
 	async #checkAA(address, governance, now, stats) {
 		const startVars = await DAG.readAAStateVars(address, START_TS_PREFIX) || {};
 		for (const [varName, rawStartTs] of Object.entries(startVars)) {
-			if (!varName.startsWith(START_TS_PREFIX)) continue;
 			const name = varName.slice(START_TS_PREFIX.length);
 			const startTs = Number(rawStartTs);
 			if (!startTs) {

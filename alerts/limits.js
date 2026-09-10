@@ -35,28 +35,22 @@ const toHours = value => {
 	return seconds === null ? null : seconds / SECONDS_IN_HOUR;
 };
 
-// The "not a number" guards below cannot be reached from chain data either, but they catch
-// our own parsing mistakes: a misread state var must raise an alert, not pass as safe.
 
 function checkRatio(value) {
-	if (value === null) return unsafe('ratio is not a number', SAFE_VALUES.ratio);
 	return value >= 0.1 && value <= 10
 		? safe()
 		: unsafe(`ratio ${value} is outside the safe range`, SAFE_VALUES.ratio);
 }
 
 function checkCounterstakeCoef(value) {
-	if (value === null) return unsafe('counterstake_coef is not a number', SAFE_VALUES.counterstake_coef);
-	return value <= 10
+	return Number.isFinite(value) && value <= 10
 		? safe()
 		: unsafe(`counterstake_coef ${value} is above the safe maximum`, SAFE_VALUES.counterstake_coef);
 }
 
 function checkPeriods(hours) {
 	for (const period of hours) {
-		if (period === null)
-			return unsafe('period is not a number', SAFE_VALUES.periods);
-		if (period < MIN_PERIOD_HOURS)
+		if (!(period >= MIN_PERIOD_HOURS))
 			return unsafe(`period ${period}h is shorter than 12 hours`, SAFE_VALUES.periods);
 	}
 	return safe();
@@ -78,9 +72,7 @@ function checkEvmLeader(name, rawValue, { trustedOracle } = {}) {
 			return checkCounterstakeCoef(hundredths(toNumber(rawValue)));
 		case 'challenging_periods':
 		case 'large_challenging_periods':
-			return Array.isArray(rawValue)
-				? checkPeriods(rawValue.map(toHours))
-				: unsafe('periods is not an array', SAFE_VALUES.periods);
+			return checkPeriods(rawValue.map(toHours));
 		case 'oracleAddress':
 			return checkTrustedOracle(rawValue, trustedOracle);
 		default:

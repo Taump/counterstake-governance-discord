@@ -26,4 +26,3 @@ oracle listed in `conf.js`, which is empty on testnet.
 - `alert_check_interval_hours` in `conf.js` sets how often each chain is swept: Obyte every 6 hours, EVM every 24.
 - A leader found unsafe in the first half of its period is only logged, with the address, parameter, value and remaining time. The alert follows on a later pass.
 - Monitors log through `console.error`, so their output stays on the terminal while the rest goes to `log.txt`. Every pass ends with a summary line.
-- `pnpm test` runs the unit tests.
