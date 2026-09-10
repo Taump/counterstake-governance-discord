@@ -38,7 +38,7 @@ class LeaderAlertMonitor {
 	}
 
 	setContracts(network, contracts) {
-		this.#contracts[network] = (contracts || []).filter(contract => contract.type !== 'governance'); // holds no voted value
+		this.#contracts[network] = contracts.filter(contract => contract.type !== 'governance'); // holds no voted value
 	}
 
 	startInterval() {
@@ -49,7 +49,7 @@ class LeaderAlertMonitor {
 
 	checkAllNetworks() {
 		const networks = Object.keys(this.#contracts).filter(network => this.#contracts[network]?.length);
-		return Promise.all(networks.map(network => this.#checkNetwork(network, { skipIfLocked: true })));
+		return Promise.all(networks.map(network => this.#checkNetwork(network)));
 	}
 
 	// Only a completed pass counts, so a failed one is retried on the next reconnect. A
@@ -58,7 +58,7 @@ class LeaderAlertMonitor {
 	checkNetworkOnce(network) {
 		if (this.#startupCheckedNetworks.has(network)) return Promise.resolve(false);
 		if (!this.#startupPasses[network]) {
-			this.#startupPasses[network] = this.#checkNetwork(network, { skipIfLocked: true })
+			this.#startupPasses[network] = this.#checkNetwork(network)
 				.then((done) => {
 					if (done) this.#startupCheckedNetworks.add(network);
 					return done;
@@ -76,7 +76,7 @@ class LeaderAlertMonitor {
 		return block;
 	}
 
-	async #checkNetwork(network, { skipIfLocked = false } = {}) {
+	async #checkNetwork(network) {
 		const contracts = this.#contracts[network] || [];
 		if (!contracts.length) return false;
 
@@ -84,7 +84,6 @@ class LeaderAlertMonitor {
 		return runPass({
 			chain: network,
 			lockKey: `${LOCK_PREFIX}.${network}`,
-			skipIfLocked,
 			context: () => `block=${block ? block.number : '-'}`,
 			run: async (stats) => {
 				block = await this.#getLatestBlock(network);

@@ -27,9 +27,8 @@ function newPassStats() {
 	};
 }
 
-// `context` is read at the end, so it can report state the pass discovered
-async function runPass({ chain, lockKey, skipIfLocked = false, context, run }) {
-	const unlock = skipIfLocked ? await mutex.lockOrSkip(lockKey) : await mutex.lock(lockKey);
+async function runPass({ chain, lockKey, context, run }) {
+	const unlock = await mutex.lockOrSkip(lockKey);
 	if (!unlock) {
 		console.error(`leader alert pass [${chain}] skipped, already running`);
 		return false;

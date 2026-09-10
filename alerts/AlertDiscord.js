@@ -6,12 +6,8 @@ const crashOnError = require('../utils/crashOnError');
 const sleep = require('../utils/sleep');
 const getErrorMessage = require('../utils/getErrorMessage');
 
-const LIMITS = {
-	title: 256,
-	description: 4096,
-	footer: 2048,
-	value: 200, // cap for attacker-controlled values (leader/current/safe value/names)
-};
+// cap for attacker-controlled values (leader/current/safe value/names)
+const MAX_VALUE_LENGTH = 200;
 
 const ALERT_COLOR = '#ff0000';
 const RETRY_DELAY_SECONDS = 5;
@@ -19,21 +15,21 @@ const MAX_ATTEMPTS = 5;
 
 function truncate(str, max) {
 	if (str.length <= max) return str;
-	return str.slice(0, Math.max(0, max - 1)) + '…';
+	return str.slice(0, max - 1) + '…';
 }
 
 function collapseWhitespace(value) {
 	return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
-function sanitizeText(value, max = LIMITS.value) {
-	return truncate(Discord.Util.escapeMarkdown(collapseWhitespace(value)), max);
+function sanitizeText(value) {
+	return truncate(Discord.Util.escapeMarkdown(collapseWhitespace(value)), MAX_VALUE_LENGTH);
 }
 
 // backticks and newlines cannot be escaped inside a code span, so they are removed
-function sanitizeCode(value, max = LIMITS.value) {
+function sanitizeCode(value) {
 	const str = collapseWhitespace(String(value ?? '').replace(/[`\r\n]/g, ' '));
-	return '`' + truncate(str || '-', max) + '`';
+	return '`' + truncate(str || '-', MAX_VALUE_LENGTH) + '`';
 }
 
 function buildEmbed(alert) {
@@ -42,15 +38,14 @@ function buildEmbed(alert) {
 		leaderSupport, expiryTs, canCommit, now,
 	} = alert;
 
-	// the fields carry every fact, so the description is only the link
 	const challengingPeriodEnds = canCommit
 		? `${formatUtc(expiryTs)} (expired, can be committed now)`
 		: formatUtc(expiryTs);
 
 	const embed = new Discord.MessageEmbed()
 		.setColor(ALERT_COLOR)
-		.setTitle(truncate('⚠️ Alert: unsafe leader value in ' + sanitizeText(aaName), LIMITS.title))
-		.setDescription(truncate(`[View on interface](${url})`, LIMITS.description))
+		.setTitle('⚠️ Alert: unsafe leader value in ' + sanitizeText(aaName))
+		.setDescription(`[View on interface](${url})`)
 		.addFields(
 			{ name: 'Parameter', value: sanitizeCode(name), inline: true },
 			{ name: 'Leader value', value: sanitizeCode(leaderValue), inline: true },
@@ -59,7 +54,7 @@ function buildEmbed(alert) {
 			{ name: 'Current value', value: sanitizeCode(currentValue), inline: true },
 			{ name: 'Challenging period ends', value: challengingPeriodEnds, inline: true },
 		)
-		.setFooter(truncate(`Checked at ${formatUtc(now)}`, LIMITS.footer));
+		.setFooter(`Checked at ${formatUtc(now)}`);
 
 	return embed;
 }

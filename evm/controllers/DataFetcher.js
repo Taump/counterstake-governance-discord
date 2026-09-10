@@ -129,7 +129,7 @@ class DataFetcher {
 
 	static isSameValue(type, a, b) {
 		if (type === 'UintArray') {
-			if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+			if (a.length !== b.length) return false;
 			return a.every((v, i) => BigInt(v) === BigInt(b[i]));
 		}
 		if (type === 'address') {

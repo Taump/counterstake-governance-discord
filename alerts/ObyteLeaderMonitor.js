@@ -66,11 +66,10 @@ class ObyteLeaderMonitor {
 		return runPass({
 			chain: CHAIN,
 			lockKey: LOCK_KEY,
-			skipIfLocked: true,
 			context: () => `now=${now ?? '-'} aas=${aas}`,
 			run: async (stats) => {
 				now = Math.floor(Date.now() / 1000);
-				const governanceAAs = this.#getGovernanceAAs() || {};
+				const governanceAAs = this.#getGovernanceAAs();
 				console.error(`leader alert pass [${CHAIN}] start at ${formatUtc(now)}, ${Object.keys(governanceAAs).length} governance AAs`);
 				for (const [address, governance] of Object.entries(governanceAAs)) {
 					aas++;
@@ -144,7 +143,7 @@ class ObyteLeaderMonitor {
 	async #getBridgeIdentity(address, governance, name, leader) {
 		const supportKey = getObyteValueKey(leader, governance.is_import);
 		const support = await DAG.readAAStateVar(address, `support_${name}_${supportKey}`);
-		const main = (this.#getCounterstakeAAs() || {})[governance.main_aa] || {};
+		const main = this.#getCounterstakeAAs()[governance.main_aa] || {};
 		const mainAddress = main.aa_address || governance.main_aa;
 		return {
 			aaName: `${mainAddress} - ${main.symbol} on ${CHAIN} (${governance.is_import ? 'import' : 'export'})`,
