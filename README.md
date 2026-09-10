@@ -23,7 +23,7 @@ Limits: `ratio` 0.1..10, `counterstake_coef` (1, 10], challenging periods >= 12 
 < 4 weeks. On top of them the bot requires `oracleAddress` and `oracles` to point at the trusted
 oracle listed in `conf.js`, which is empty on testnet.
 
-- `alert_check_interval_hours` sets the interval, default 6. `mute=1` logs alerts instead of posting them.
+- `alert_check_interval_hours` in `conf.js` sets how often each chain is swept: Obyte every 6 hours, EVM every 24. `mute=1` logs alerts instead of posting them.
 - A leader found unsafe in the first half of its period is only logged, with the address, parameter, value and remaining time. The alert follows on a later pass.
 - Monitors log through `console.error`, so their output stays on the terminal while the rest goes to `log.txt`. Every pass ends with a summary line.
 - `pnpm test` runs the unit tests.

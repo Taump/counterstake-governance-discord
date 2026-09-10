@@ -10,7 +10,7 @@ const crashOnError = require('../utils/crashOnError');
 // headless-obyte redirects console.log, warn and info to log.txt.
 
 function schedulePasses({ chain, run, runNow = false }) {
-	const intervalHours = conf.alert_check_interval_hours;
+	const intervalHours = conf.alert_check_interval_hours[chain];
 	const start = label => run().catch(e => crashOnError(`leader alert ${label} failed`, e));
 	if (runNow) start(`initial ${chain} pass`);
 	setInterval(() => start(`${chain} interval`), intervalHours * 60 * 60 * 1000);

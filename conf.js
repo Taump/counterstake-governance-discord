@@ -36,7 +36,11 @@ exports.ws_nodes = {
 exports.scan_start_date = process.env.scan_start_date;
 exports.address_scan_interval_hours = process.env.address_scan_interval_hours || 12;
 
-exports.alert_check_interval_hours = Number(process.env.alert_check_interval_hours) || 6;
+
+exports.alert_check_interval_hours = {
+	Obyte: 6,
+	EVM: 24,
+};
 
 exports.trusted_oracles = process.env.testnet ? {
 	// testnet oracles are not configured: the oracle policy is skipped there
