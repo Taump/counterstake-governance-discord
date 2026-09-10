@@ -509,7 +509,7 @@ class AddressEventScanner {
 				.map(contract => `${contract.meta?.network || network}:${contract.meta?.aa_version}:${contract.type}:${contract.address}`)
 				.join(', ');
 
-			if (conf.bTestnet || process.env.testnet)
+			if (process.env.testnet)
 				return console.warn(`skipping EVM event scan, no scanner route on testnet: ${details}`);
 			throw Error(`unsupported EVM scanner contract route: ${details}`);
 		}

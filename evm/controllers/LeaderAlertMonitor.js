@@ -14,20 +14,13 @@ const {
 	logLeaderCheck,
 	reportUnsafeLeader,
 } = require('../../alerts/monitorSupport');
-const getErrorMessage = require('../../utils/getErrorMessage');
 const sleep = require('../../utils/sleep');
+const getErrorMessage = require('../../utils/getErrorMessage');
 
 const LOCK_PREFIX = 'LeaderAlertMonitor';
 const CONTRACT_DELAY_SECONDS = 0.3;
-
-// A pass pins all its reads to one block. If that block is no longer available on the node
-// (a pruning or load-balanced RPC), the pass refetches the head and retries the contract.
-const STATE_UNAVAILABLE = /historical state|missing trie node|header not found|unknown block|block not found/i;
-
-function isStateUnavailableError(error) {
-	const message = [error?.message, error?.shortMessage, error?.info?.error?.message, error?.error?.message];
-	return STATE_UNAVAILABLE.test(message.filter(Boolean).join(' '));
-}
+const READ_ATTEMPTS = 5;
+const READ_RETRY_SECONDS = 2;
 
 function formatValue(name, value, meta) {
 	const formatted = String(Formatter.format(name, value, meta));
@@ -104,7 +97,7 @@ class LeaderAlertMonitor {
 				console.error(`leader alert pass [${network}] start at block ${block.number} (${formatUtc(block.timestamp)}), ${contracts.length} contracts`);
 
 				for (const contract of contracts) {
-					block = await this.#checkContractWithRetry(network, contract, block, stats);
+					await this.#readContract(network, contract, Number(block.timestamp), stats);
 					await sleep(CONTRACT_DELAY_SECONDS);
 				}
 				return true;
@@ -112,32 +105,27 @@ class LeaderAlertMonitor {
 		});
 	}
 
-	// Returns the block the pass should keep using: a fresher head if the pinned one went away
-	async #checkContractWithRetry(network, contract, block, stats) {
+	// Like the event scanner: a read is retried, and one that keeps failing crashes the pass
+	// rather than leaving contracts silently unchecked. The daemon check restarts the bot.
+	async #readContract(network, contract, blockTs, stats) {
 		for (let attempt = 1; ; attempt++) {
 			try {
-				await this.#checkContract(network, contract, block, stats);
-				return block;
+				return await this.#checkContract(network, contract, blockTs, stats);
 			} catch (e) {
-				if (isStateUnavailableError(e) && attempt === 1) {
-					console.error(`leader alert [${network}] state unavailable at block ${block.number}, refetching latest block`, getErrorMessage(e));
-					block = await this.#getLatestBlock(network);
-					continue;
-				}
-				stats.errors++;
-				console.error(`leader alert [${network}] error for ${contract.name}@${contract.address}:`, getErrorMessage(e));
-				return block;
+				const target = `${contract.name}@${contract.address}`;
+				if (attempt === READ_ATTEMPTS)
+					throw Error(`${target} unreadable after ${READ_ATTEMPTS} attempts: ${getErrorMessage(e)}`);
+				console.error(`leader alert [${network}] read attempt ${attempt}/${READ_ATTEMPTS} failed for ${target}: ${getErrorMessage(e)}`);
+				await sleep(READ_RETRY_SECONDS);
 			}
 		}
 	}
 
-	async #checkContract(network, contract, block, stats) {
+	async #checkContract(network, contract, blockTs, stats) {
 		const { type, name, address, meta } = contract;
-		const blockTs = Number(block.timestamp);
-		const callOptions = { blockTag: block.number };
 		const c = new ethers.Contract(address, getAbiByType(type), this.#providers[network]);
 
-		const startTs = Number(await c.challenging_period_start_ts(callOptions));
+		const startTs = Number(await c.challenging_period_start_ts());
 		if (!startTs) {
 			stats.notVoted++;
 			return;
@@ -145,9 +133,9 @@ class LeaderAlertMonitor {
 
 		const timing = getTiming({ startTs, period: meta.challenging_period, now: blockTs });
 
-		// challenging_period_start_ts() just succeeded on this contract at this block, so a
-		// bare revert on leader(0)/current_value(0) means an empty array
-		const { leader, current, support } = await DataFetcher.fetchRawVotedState(c, type, callOptions, {
+		// challenging_period_start_ts() just succeeded on this contract, so a bare revert on
+		// leader(0)/current_value(0) means an empty array
+		const { leader, current, support } = await DataFetcher.fetchRawVotedState(c, type, {
 			allowEmptyOnGenericRevert: true,
 			withSupport: timing.halfPassed,
 		});

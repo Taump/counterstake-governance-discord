@@ -94,11 +94,11 @@ class DataFetcher {
 	// Raw readers for the leader alert monitor: values are kept as bigint / bigint[] /
 	// address strings so that no precision is lost before validation and comparison.
 
-	static async fetchRawUintArray(contract, method, callOptions, options = {}) {
+	static async fetchRawUintArray(contract, method, options = {}) {
 		const values = [];
 		for (let i = 0; ; i++) {
 			try {
-				values.push(await callWithOptions(contract, method, [i], callOptions));
+				values.push(await contract[method](i));
 			} catch (e) {
 				if (!isArrayOutOfBoundsError(e, i, method, options)) {
 					throw e;
@@ -111,24 +111,22 @@ class DataFetcher {
 
 	// `withSupport: false` skips the votes lookup, which is only needed to render an alert.
 	// The support is then returned as null.
-	static async fetchRawVotedState(contract, type, callOptions, options = {}) {
+	static async fetchRawVotedState(contract, type, options = {}) {
 		const { withSupport = true } = options;
 		if (type === 'UintArray') {
-			const leader = await DataFetcher.fetchRawUintArray(contract, 'leader', callOptions, options);
-			const current = await DataFetcher.fetchRawUintArray(contract, 'current_value', callOptions, options);
+			const leader = await DataFetcher.fetchRawUintArray(contract, 'leader', options);
+			const current = await DataFetcher.fetchRawUintArray(contract, 'current_value', options);
 			let support = null;
 			if (withSupport) {
-				const leaderKey = await callWithOptions(contract, 'getKey', [leader], callOptions);
-				support = BigInt(await callWithOptions(contract, 'votesByValue', [leaderKey], callOptions));
+				const leaderKey = await contract.getKey(leader);
+				support = BigInt(await contract.votesByValue(leaderKey));
 			}
 			return { leader, current, support };
 		}
 
-		const leader = await callWithOptions(contract, 'leader', [], callOptions);
-		const current = await callWithOptions(contract, 'current_value', [], callOptions);
-		const support = withSupport
-			? BigInt(await callWithOptions(contract, 'votesByValue', [leader], callOptions))
-			: null;
+		const leader = await contract.leader();
+		const current = await contract.current_value();
+		const support = withSupport ? BigInt(await contract.votesByValue(leader)) : null;
 		if (type === 'address') {
 			return { leader: String(leader), current: String(current), support };
 		}

@@ -49,7 +49,7 @@ async function runPass({ chain, lockKey, skipIfLocked = false, context = () => '
 	} catch (e) {
 		stats.errors++;
 		console.error(`leader alert pass [${chain}] failed:`, getErrorMessage(e));
-		return false;
+		throw e; // the scheduler and the connect handler turn this into a crash, as in the scanner
 	} finally {
 		console.error(`leader alert pass [${chain}] ${context()}`
 			+ ` checked=${stats.checked} notVoted=${stats.notVoted} beforeHalf=${stats.beforeHalf}`

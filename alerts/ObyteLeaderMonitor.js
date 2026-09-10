@@ -92,12 +92,7 @@ class ObyteLeaderMonitor {
 				console.error(`leader alert pass [${CHAIN}] start at ${formatUtc(now)}, ${Object.keys(governanceAAs).length} governance AAs`);
 				for (const [address, governance] of Object.entries(governanceAAs)) {
 					aas++;
-					try {
-						await this.#checkAA(address, governance, now, stats);
-					} catch (e) {
-						stats.errors++;
-						console.error(`leader alert [${CHAIN}] error for governance AA ${address}:`, getErrorMessage(e));
-					}
+					await this.#checkAA(address, governance, now, stats);
 				}
 				return true;
 			},
