@@ -1,9 +1,6 @@
 {
 	"name": "counterstake-governance-discord",
 	"version": "0.1.0",
-	"scripts": {
-		"test": "node --test test/*.test.js"
-	},
 	"dependencies": {
 		"aabot": "git+https://github.com/byteball/aabot.git",
 		"axios": "^1.8.4",
@@ -13,5 +10,6 @@
 		"governance_events": "git+https://github.com/byteball/governance_events.git",
 		"ocore": "git+https://github.com/byteball/ocore.git"
 	},
-	"resolutions": {}
+	"resolutions": {
+	}
 }
