@@ -3,6 +3,7 @@ const conf = require('ocore/conf.js');
 
 const { formatUtc } = require('./timing');
 const crashOnError = require('../utils/crashOnError');
+const sleep = require('../utils/sleep');
 const getErrorMessage = require('../utils/getErrorMessage');
 
 const LIMITS = {
@@ -14,10 +15,8 @@ const LIMITS = {
 };
 
 const ALERT_COLOR = '#ff0000';
-const RETRY_DELAY_MS = 5000;
+const RETRY_DELAY_SECONDS = 5;
 const MAX_ATTEMPTS = 5;
-
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function truncate(str, max) {
 	if (str.length <= max) return str;
@@ -144,7 +143,7 @@ class AlertDiscord {
 				}
 				console.error(`Discord alert attempt ${attempt}/${MAX_ATTEMPTS} failed for channel ${channelId}: ${getErrorMessage(error)}`);
 				if (attempt < MAX_ATTEMPTS)
-					await sleep(RETRY_DELAY_MS);
+					await sleep(RETRY_DELAY_SECONDS);
 			}
 		}
 		crashOnError(`Discord alert failed after ${MAX_ATTEMPTS} attempts for channel ${channelId}`, lastError);

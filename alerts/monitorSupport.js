@@ -6,9 +6,6 @@ const { formatUtc, formatDuration } = require('./timing');
 const getErrorMessage = require('../utils/getErrorMessage');
 const crashOnError = require('../utils/crashOnError');
 
-// Shared by both leader monitors. Alert output goes through console.error on purpose:
-// headless-obyte redirects console.log, warn and info to log.txt.
-
 function schedulePasses({ chain, run, runNow = false }) {
 	const intervalHours = conf.alert_check_interval_hours[chain];
 	const start = label => run().catch(e => crashOnError(`leader alert ${label} failed`, e));
