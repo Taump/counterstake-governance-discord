@@ -10,7 +10,6 @@ const migration = require('./migration');
 const evm = require('./evm');
 const { isAfterScanStartDate } = require('./utils/scanStartDateFilter');
 const ObyteLeaderMonitor = require('./alerts/ObyteLeaderMonitor');
-const { validateAddressesByNetwork } = require('./utils/validateAddressByNetwork');
 
 var assocGovernanceAAs = {};
 var assocCounterstakeAAs = {};
@@ -22,7 +21,6 @@ eventBus.once('connected', function(ws){
 });
 
 async function start(){
-	console.log('trusted oracles:', validateAddressesByNetwork(conf.trusted_oracles, 'trusted oracle'));
 	await discoverGovernanceAas();
 	watchBaseGovernanceAas();
 	new ObyteLeaderMonitor({
