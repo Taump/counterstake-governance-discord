@@ -17,10 +17,6 @@ function schedulePasses({ chain, run, runNow = false }) {
 	console.error(`leader alert monitor [${chain}]: checking every ${intervalHours} hours`);
 }
 
-function resolveAlertDiscord(injected) {
-	return injected || AlertDiscord.getInstance();
-}
-
 function newPassStats() {
 	return {
 		checked: 0,
@@ -35,7 +31,7 @@ function newPassStats() {
 }
 
 // `context` is read at the end, so it can report state the pass discovered
-async function runPass({ chain, lockKey, skipIfLocked = false, context = () => '', run }) {
+async function runPass({ chain, lockKey, skipIfLocked = false, context, run }) {
 	const unlock = skipIfLocked ? await mutex.lockOrSkip(lockKey) : await mutex.lock(lockKey);
 	if (!unlock) {
 		console.error(`leader alert pass [${chain}] skipped, already running`);
@@ -67,24 +63,22 @@ function logLeaderCheck({ chain, target, leaderValue, currentValue, startTs, tim
 
 // Before half of the challenging period the value is only logged, and the alert follows on a
 // later pass. `buildAlert` runs only when alerting, so its extra chain reads are skipped.
-async function reportUnsafeLeader({ chain, target, alertDiscord, stats, timing, leaderValue, reason, buildAlert }) {
+async function reportUnsafeLeader({ chain, target, stats, timing, leaderValue, reason, buildAlert }) {
 	stats.unsafe++;
 	if (!timing.halfPassed) {
 		stats.unsafeBeforeHalf++;
 		console.error(`leader alert [${chain}] unsafe leader value, too early to alert: ${target}`
 			+ ` value=${leaderValue} (${reason}); challenging period still runs for`
 			+ ` ${formatDuration(timing.remainingSeconds)}, until ${formatUtc(timing.expiryTs)}`);
-		return false;
+		return;
 	}
 
-	await alertDiscord.announceUnsafeLeader(await buildAlert());
+	await AlertDiscord.getInstance().announceUnsafeLeader(await buildAlert());
 	stats.alertsSent++;
-	return true;
 }
 
 module.exports = {
 	schedulePasses,
-	resolveAlertDiscord,
 	runPass,
 	logLeaderCheck,
 	reportUnsafeLeader,

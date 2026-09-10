@@ -6,7 +6,6 @@ const { checkObyteLeader } = require('./limits');
 const { getTiming, formatUtc } = require('./timing');
 const {
 	schedulePasses,
-	resolveAlertDiscord,
 	runPass,
 	logLeaderCheck,
 	reportUnsafeLeader,
@@ -49,13 +48,11 @@ function exists(value) {
 class ObyteLeaderMonitor {
 	#getGovernanceAAs;
 	#getCounterstakeAAs;
-	#injectedAlertDiscord;
 	#scheduled = false;
 
-	constructor({ getGovernanceAAs, getCounterstakeAAs, alertDiscord } = {}) {
+	constructor({ getGovernanceAAs, getCounterstakeAAs }) {
 		this.#getGovernanceAAs = getGovernanceAAs;
 		this.#getCounterstakeAAs = getCounterstakeAAs;
-		this.#injectedAlertDiscord = alertDiscord;
 	}
 
 	start() {
@@ -140,7 +137,6 @@ class ObyteLeaderMonitor {
 		await reportUnsafeLeader({
 			chain: CHAIN,
 			target,
-			alertDiscord: resolveAlertDiscord(this.#injectedAlertDiscord),
 			stats,
 			timing,
 			leaderValue,

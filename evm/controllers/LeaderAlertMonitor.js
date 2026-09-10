@@ -9,7 +9,6 @@ const { checkEvmLeader } = require('../../alerts/limits');
 const { getTiming, formatUtc } = require('../../alerts/timing');
 const {
 	schedulePasses,
-	resolveAlertDiscord,
 	runPass,
 	logLeaderCheck,
 	reportUnsafeLeader,
@@ -30,14 +29,9 @@ function formatValue(name, value, meta) {
 class LeaderAlertMonitor {
 	#contracts = {};
 	#providers = {};
-	#injectedAlertDiscord;
 	#scheduled = false;
 	#startupCheckedNetworks = new Set();
 	#startupPasses = {};
-
-	constructor({ alertDiscord } = {}) {
-		this.#injectedAlertDiscord = alertDiscord;
-	}
 
 	setProvider(network, provider) {
 		this.#providers[network] = provider;
@@ -84,7 +78,7 @@ class LeaderAlertMonitor {
 
 	async #checkNetwork(network, { skipIfLocked = false } = {}) {
 		const contracts = this.#contracts[network] || [];
-		if (!contracts.length) return false; // nothing to check, and nothing worth logging
+		if (!contracts.length) return false;
 
 		let block = null;
 		return runPass({
@@ -156,7 +150,6 @@ class LeaderAlertMonitor {
 		await reportUnsafeLeader({
 			chain: network,
 			target,
-			alertDiscord: resolveAlertDiscord(this.#injectedAlertDiscord),
 			stats,
 			timing,
 			leaderValue,

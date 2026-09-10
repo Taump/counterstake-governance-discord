@@ -18,6 +18,8 @@ const ALERT_COLOR = '#ff0000';
 const RETRY_DELAY_MS = 5000;
 const MAX_ATTEMPTS = 5;
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 function truncate(str, max) {
 	if (str.length <= max) return str;
 	return str.slice(0, Math.max(0, max - 1)) + '…';
@@ -76,22 +78,16 @@ function isNonRetryableError(error) {
 class AlertDiscord {
 	static #instance = null;
 
-	#createClient;
 	#token;
 	#channels;
 	#muted;
-	#sleep;
-	#onFatal;
 	#loginPromise = null;
 	#queue = Promise.resolve();
 
-	constructor({ createClient, token, channels, muted, sleep, onFatal } = {}) {
-		this.#createClient = createClient || (() => new Discord.Client());
+	constructor({ token, channels, muted }) {
 		this.#token = token;
 		this.#channels = channels || [];
 		this.#muted = !!muted;
-		this.#sleep = sleep || (ms => new Promise(resolve => setTimeout(resolve, ms)));
-		this.#onFatal = onFatal || crashOnError;
 	}
 
 	static getInstance() {
@@ -113,7 +109,7 @@ class AlertDiscord {
 	#ensureLoggedIn() {
 		if (!this.#loginPromise) {
 			this.#loginPromise = (async () => {
-				const client = this.#createClient();
+				const client = new Discord.Client();
 				client.on('error', (error) => {
 					console.error(`Discord alert client error: ${getErrorMessage(error)}`);
 				});
@@ -136,17 +132,10 @@ class AlertDiscord {
 	}
 
 	async #send(embed) {
-		if (this.#muted) {
-			console.error('Discord alert muted:', JSON.stringify(embed.toJSON()));
-			return { sent: [], failed: [] };
-		}
-		const sent = [];
-		const failed = [];
-		for (const channelId of this.#channels) {
-			const ok = await this.#sendToChannel(channelId, embed);
-			(ok ? sent : failed).push(channelId);
-		}
-		return { sent, failed };
+		if (this.#muted)
+			return console.error('Discord alert muted:', JSON.stringify(embed.toJSON()));
+		for (const channelId of this.#channels)
+			await this.#sendToChannel(channelId, embed);
 	}
 
 	async #sendToChannel(channelId, embed) {
@@ -156,21 +145,18 @@ class AlertDiscord {
 				const client = await this.#ensureLoggedIn();
 				const channel = await client.channels.fetch(channelId);
 				await channel.send(embed);
-				console.error(`Discord alert sent to channel ${channelId}`);
-				return true;
+				return console.error(`Discord alert sent to channel ${channelId}`);
 			} catch (error) {
 				lastError = error;
 				if (isNonRetryableError(error)) {
-					console.error(`Discord alert rejected for channel ${channelId} (HTTP ${error.httpStatus}): ${getErrorMessage(error)}`);
-					return false;
+					return console.error(`Discord alert rejected for channel ${channelId} (HTTP ${error.httpStatus}): ${getErrorMessage(error)}`);
 				}
 				console.error(`Discord alert attempt ${attempt}/${MAX_ATTEMPTS} failed for channel ${channelId}: ${getErrorMessage(error)}`);
 				if (attempt < MAX_ATTEMPTS)
-					await this.#sleep(RETRY_DELAY_MS);
+					await sleep(RETRY_DELAY_MS);
 			}
 		}
-		this.#onFatal(`Discord alert failed after ${MAX_ATTEMPTS} attempts for channel ${channelId}`, lastError);
-		return false;
+		crashOnError(`Discord alert failed after ${MAX_ATTEMPTS} attempts for channel ${channelId}`, lastError);
 	}
 }
 

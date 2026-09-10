@@ -18,15 +18,6 @@ function validateAddressByNetwork(network, address, label = 'address') {
 	}
 }
 
-function isValidAddressByNetwork(network, address) {
-	try {
-		validateAddressByNetwork(network, address);
-		return true;
-	} catch (e) {
-		return false;
-	}
-}
-
 function validateAddressesByNetwork(addressesByNetwork = {}, label = 'address') {
 	for (const [network, address] of Object.entries(addressesByNetwork)) {
 		addressesByNetwork[network] = validateAddressByNetwork(network, address, label);
@@ -36,6 +27,5 @@ function validateAddressesByNetwork(addressesByNetwork = {}, label = 'address') 
 
 module.exports = {
 	validateAddressByNetwork,
-	isValidAddressByNetwork,
 	validateAddressesByNetwork,
 };
