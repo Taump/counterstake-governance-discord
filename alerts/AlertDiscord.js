@@ -10,7 +10,6 @@ const LIMITS = {
 	title: 256,
 	description: 4096,
 	footer: 2048,
-	total: 6000,
 	value: 200, // cap for attacker-controlled values (leader/current/safe value/names)
 };
 
@@ -62,9 +61,6 @@ function buildEmbed(alert) {
 		)
 		.setFooter(truncate(`Checked at ${formatUtc(now)}`, LIMITS.footer));
 
-	const overflow = embed.length - LIMITS.total;
-	if (overflow > 0)
-		embed.setDescription(truncate(embed.description, Math.max(0, embed.description.length - overflow)));
 	return embed;
 }
 
