@@ -1,10 +1,5 @@
 const ARRAY_OUT_OF_BOUNDS_PANIC_CODE = 0x32n;
 
-// Detects "index out of bounds" reverts when reading a public array element by element.
-// `allowEmptyOnGenericRevert` lets a generic revert (no revert data) at index 0 be treated
-// as an empty array; callers must only enable it after a successful call on the same
-// contract (same block), which proves the contract is responsive and the bare revert on
-// index 0 means the array is empty.
 function isArrayOutOfBoundsError(error, index, method = 'leader', { allowEmptyOnGenericRevert = false } = {}) {
 	const panicCode = error?.revert?.args?.[0];
 	if (error?.revert?.name === 'Panic'
