@@ -16,8 +16,8 @@ const SAFE_VALUES = {
 	feed_name: 'a non-empty feed name for every oracle',
 };
 
-const safe = () => ({ safe: true, reason: null, safeValue: null, policy: false });
-const unsafe = (reason, safeValue, policy = false) => ({ safe: false, reason, safeValue, policy });
+const safe = () => ({ safe: true });
+const unsafe = (reason, safeValue) => ({ safe: false, reason, safeValue });
 const trustedOracleValue = oracle => `trusted oracle ${oracle}`;
 
 function toNumber(value) {
@@ -60,7 +60,7 @@ function checkTrustedOracle(oracle, trustedOracle) {
 	if (!trustedOracle) return safe(); // no oracle configured for this network: policy is off
 	return String(oracle).toLowerCase() === trustedOracle.toLowerCase()
 		? safe()
-		: unsafe(`oracle ${oracle} is not the trusted oracle`, trustedOracleValue(trustedOracle), true);
+		: unsafe(`oracle ${oracle} is not the trusted oracle`, trustedOracleValue(trustedOracle));
 }
 
 function checkEvmLeader(name, rawValue, { trustedOracle } = {}) {
@@ -84,7 +84,7 @@ function checkObyteOracles(rawValue, trustedOracle) {
 	for (const pair of String(rawValue).split(' ')) {
 		const oracle = pair.slice(0, OBYTE_ADDRESS_LENGTH);
 		if (!pair.slice(OBYTE_ADDRESS_LENGTH + 1)) // the AA allows an empty feed name; this is bot policy
-			return unsafe(`empty feed name for oracle ${oracle}`, SAFE_VALUES.feed_name, true);
+			return unsafe(`empty feed name for oracle ${oracle}`, SAFE_VALUES.feed_name);
 
 		const trusted = checkTrustedOracle(oracle, trustedOracle);
 		if (!trusted.safe) return trusted;

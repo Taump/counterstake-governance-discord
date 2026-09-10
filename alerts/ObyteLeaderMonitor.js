@@ -130,8 +130,6 @@ class ObyteLeaderMonitor {
 				leaderValue,
 				currentValue,
 				safeValue: verdict.safeValue,
-				reason: verdict.reason,
-				policy: verdict.policy,
 				expiryTs: timing.expiryTs,
 				canCommit: timing.canCommit,
 				now,

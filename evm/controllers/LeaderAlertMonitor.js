@@ -160,8 +160,6 @@ class LeaderAlertMonitor {
 				leaderValue,
 				currentValue,
 				safeValue: verdict.safeValue,
-				reason: verdict.reason,
-				policy: verdict.policy,
 				leaderSupport: `${ethers.formatUnits(support, meta.votingAsset.decimals)} ${meta.votingAsset.symbol}`,
 				expiryTs: timing.expiryTs,
 				canCommit: timing.canCommit,
