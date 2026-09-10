@@ -508,8 +508,7 @@ class AddressEventScanner {
 			const details = unsupportedContracts
 				.map(contract => `${contract.meta?.network || network}:${contract.meta?.aa_version}:${contract.type}:${contract.address}`)
 				.join(', ');
-			// no scanner backend covers testnet: the SQD datasets are mainnet only and the log
-			// scanner needs v1.1+, while every testnet bridge is v1
+
 			if (conf.bTestnet || process.env.testnet)
 				return console.warn(`skipping EVM event scan, no scanner route on testnet: ${details}`);
 			throw Error(`unsupported EVM scanner contract route: ${details}`);

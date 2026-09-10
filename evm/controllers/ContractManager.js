@@ -5,7 +5,6 @@ const AssetMetadataResolver = require('./AssetMetadataResolver');
 const { getAbiByType } = require('../abi/getAbiByType');
 
 const SUPPORTED_AA_VERSIONS = ['v1', 'v1.1', 'v1.2', 'v1.3'];
-const DEFAULT_GOVERNANCE_CHALLENGING_PERIOD = 10 * 24 * 3600; // Governance.governance_challenging_period()
 const REALTIME_AA_VERSIONS = ['v1.1', 'v1.2', 'v1.3'];
 
 function wait(ms) {
@@ -129,12 +128,7 @@ class ContractManager {
 		]);
 		const governance = new ethers.Contract(governance_address, getAbiByType('governance'), provider);
 		const votingAssetAddress = await governance.votingTokenAddress();
-		let challenging_period = DEFAULT_GOVERNANCE_CHALLENGING_PERIOD;
-		try {
-			challenging_period = Number(await governance.governance_challenging_period());
-		} catch (e) {
-			console.warn('failed to read governance_challenging_period, using default', network, governance_address, e?.shortMessage || e?.message);
-		}
+		const challenging_period = Number(await governance.governance_challenging_period());
 		const bridgeAsset = await this.#assetMetadataResolver.resolve(
 			network,
 			rawBridgeAsset.address,
