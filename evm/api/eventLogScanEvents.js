@@ -3,6 +3,7 @@ const { getAbiByType } = require('../abi/getAbiByType');
 const DataFetcher = require('../controllers/DataFetcher');
 const Formatter = require('../controllers/Formatter');
 const sleep = require('../../utils/sleep');
+const getErrorMessage = require('../../utils/getErrorMessage');
 
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_RETRY_DELAY_MS = 2000;
@@ -25,10 +26,6 @@ function getUnixTimestamp(value) {
 	const date = value instanceof Date ? value : new Date(value);
 	const timestamp = Math.floor(date.getTime() / 1000);
 	return Number.isFinite(timestamp) ? timestamp : null;
-}
-
-function getErrorMessage(e) {
-	return e?.message || e?.code || String(e);
 }
 
 async function requestWithRetry(fn, logContext) {

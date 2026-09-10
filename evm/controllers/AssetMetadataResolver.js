@@ -1,4 +1,5 @@
 const { ethers } = require('ethers');
+const getErrorMessage = require('../../utils/getErrorMessage');
 
 const NATIVE_ASSETS = {
 	Ethereum: { symbol: 'ETH', decimals: 18 },
@@ -11,10 +12,6 @@ const ERC20_METADATA_ABI = [
 	'function symbol() view returns (string)',
 	'function decimals() view returns (uint8)',
 ];
-
-function getErrorMessage(error) {
-	return error?.shortMessage || error?.message || String(error);
-}
 
 function normalizeMetadata(address, metadata) {
 	const decimals = Number(metadata?.decimals);

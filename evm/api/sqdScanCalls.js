@@ -2,6 +2,7 @@ const axios = require('axios');
 const { eventsForV1 } = require('../eventsForV1');
 const sleep = require('../../utils/sleep');
 const scheduleSqdRequest = require('./sqdRequestScheduler');
+const getErrorMessage = require('../../utils/getErrorMessage');
 
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_RETRY_DELAY_MS = 2000;
@@ -70,10 +71,6 @@ async function requestWithRetry(fn, logContext) {
 			await sleep(DEFAULT_RETRY_DELAY_MS / 1000);
 		}
 	}
-}
-
-function getErrorMessage(e) {
-	return e?.message || e?.code || String(e);
 }
 
 async function getBlockTimestamp(provider, blockNumber) {

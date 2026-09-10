@@ -5,6 +5,7 @@ const DataFetcher = require('../controllers/DataFetcher');
 const Formatter = require('../controllers/Formatter');
 const sleep = require('../../utils/sleep');
 const scheduleSqdRequest = require('./sqdRequestScheduler');
+const getErrorMessage = require('../../utils/getErrorMessage');
 
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_RETRY_DELAY_MS = 2000;
@@ -29,10 +30,6 @@ function isSqdLogScanSupported(network, contract) {
 		&& !!DATASETS[network]
 		&& SUPPORTED_AA_VERSIONS.includes(contract?.meta?.aa_version)
 		&& !!EVENT_NAMES_BY_TYPE[contract?.type];
-}
-
-function getErrorMessage(e) {
-	return e?.message || e?.code || String(e);
 }
 
 function getUnixTimestamp(value) {
