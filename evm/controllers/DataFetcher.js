@@ -105,7 +105,6 @@ class DataFetcher {
 	}
 
 	// `withSupport: false` skips the votes lookup, which is only needed to render an alert.
-	// The support is then returned as null.
 	static async fetchRawVotedState(contract, type, options = {}) {
 		const { withSupport = true } = options;
 		if (type === 'UintArray') {

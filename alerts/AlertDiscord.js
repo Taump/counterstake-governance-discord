@@ -5,7 +5,6 @@ const { formatUtc } = require('./timing');
 const crashOnError = require('../utils/crashOnError');
 const getErrorMessage = require('../utils/getErrorMessage');
 
-// Alert values come from voters, so everything rendered goes through the helpers below.
 const LIMITS = {
 	title: 256,
 	description: 4096,
@@ -94,7 +93,7 @@ class AlertDiscord {
 		if (AlertDiscord.#instance) return AlertDiscord.#instance;
 
 		const muted = !!process.env.mute;
-		if (!muted) { // a muted (dry-run) instance never logs in, so it needs no credentials
+		if (!muted) {
 			if (!conf.discord_token) throw Error('discord_token missing in conf');
 			if (!conf.discord_channels?.length) throw Error('channels missing in conf');
 		}
