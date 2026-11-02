@@ -1,18 +1,21 @@
-// Off-chain replica of the safety limits that the NEW Counterstake contracts/AAs apply to
-// governance values (byteball/counterstake-bridge commit e3ffff92 "limits on governable
-// parameters"), plus bot policies (trusted oracles). Pure module: no I/O.
+// Safety limits for governance values, stricter than the ones the NEW Counterstake contracts/AAs
+// apply (byteball/counterstake-bridge commit e3ffff92 "limits on governable parameters"),
+// plus bot policies (trusted oracles). Pure module: no I/O.
 //
-// A value that fails these checks is not invalid: the older deployed contracts/AAs accepted
-// it, which is exactly why it is worth an alert. It is reported as unsafe.
+// A value that fails these checks is not invalid: the deployed contracts/AAs accept it,
+// which is exactly why it is worth an alert. It is reported as unsafe.
 
 const SECONDS_IN_HOUR = 3600;
-const MIN_PERIOD_HOURS = 12;
+const MIN_RATIO = 0.2;
+const MAX_RATIO = 5;
+const MAX_COUNTERSTAKE_COEF = 3;
+const MIN_PERIOD_HOURS = 24;
 const OBYTE_ADDRESS_LENGTH = 32;
 
 const SAFE_VALUES = {
-	ratio: '0.1 <= ratio <= 10',
-	counterstake_coef: 'counterstake_coef <= 10',
-	periods: 'each period >= 12 hours',
+	ratio: `${MIN_RATIO} <= ratio <= ${MAX_RATIO}`,
+	counterstake_coef: `counterstake_coef <= ${MAX_COUNTERSTAKE_COEF}`,
+	periods: `each period >= ${MIN_PERIOD_HOURS} hours`,
 	feed_name: 'a non-empty feed name for every oracle',
 };
 
@@ -37,13 +40,13 @@ const toHours = value => {
 
 
 function checkRatio(value) {
-	return value >= 0.1 && value <= 10
+	return value >= MIN_RATIO && value <= MAX_RATIO
 		? safe()
 		: unsafe(`ratio ${value} is outside the safe range`, SAFE_VALUES.ratio);
 }
 
 function checkCounterstakeCoef(value) {
-	return Number.isFinite(value) && value <= 10
+	return Number.isFinite(value) && value <= MAX_COUNTERSTAKE_COEF
 		? safe()
 		: unsafe(`counterstake_coef ${value} is above the safe maximum`, SAFE_VALUES.counterstake_coef);
 }
@@ -51,7 +54,7 @@ function checkCounterstakeCoef(value) {
 function checkPeriods(hours) {
 	for (const period of hours) {
 		if (!(period >= MIN_PERIOD_HOURS))
-			return unsafe(`period ${period}h is shorter than 12 hours`, SAFE_VALUES.periods);
+			return unsafe(`period ${period}h is shorter than ${MIN_PERIOD_HOURS} hours`, SAFE_VALUES.periods);
 	}
 	return safe();
 }

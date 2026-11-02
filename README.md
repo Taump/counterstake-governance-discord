@@ -16,12 +16,14 @@ Watch the [Obyte counterstake governance AAs](https://counterstake.org) and post
 
 The bot also checks the current *leader* of every governance parameter, on Obyte AAs and on EVM
 VotedValue contracts of all versions. If a leader is uncommitted, half of its challenging period has
-passed, and the value would be rejected by the new Counterstake contracts/AAs, a red **Alert** embed
-is posted and repeated on every check until the leader changes or gets committed.
+passed, and the value is outside the bot's safe limits, a red **Alert** embed is posted and repeated
+on every check until the leader changes or gets committed.
 
-Limits: `ratio` 0.1..10, `counterstake_coef` (1, 10], challenging periods >= 12 hours, `min_tx_age`
-< 4 weeks. On top of them the bot requires `oracleAddress` and `oracles` to point at the trusted
-oracle listed in `conf.js`, which is empty on testnet.
+Limits: `ratio` 0.2..5, `counterstake_coef` <= 3, challenging periods >= 24 hours. They are stricter
+than what the new Counterstake contracts/AAs enforce (`ratio` 0.1..10, `counterstake_coef` (1, 10],
+challenging periods >= 12 hours, `min_tx_age` < 4 weeks), so a value can be accepted on-chain and
+still trigger an alert. On top of them the bot requires `oracleAddress` and `oracles` to point at
+the trusted oracle listed in `conf.js`, which is empty on testnet.
 
 - `alert_check_interval_hours` in `conf.js` sets how often each chain is swept: Obyte every 6 hours, EVM every 24.
 - A leader found unsafe in the first half of its period is only logged, with the address, parameter, value and remaining time. The alert follows on a later pass.
